@@ -88,8 +88,14 @@ func upload(c *cli.Context) error {
 		return err
 	}
 	fmt.Printf("Uploading to %s:%s\n", bc.Remote, bc.RemoteRoot)
-	rsync := newRsync(bc.LocalRoot, bc.Remote, bc.RemoteRoot)
-	return rsync.Upload(bc.Upload.Includes, bc.Upload.Excludes)
+	rsync := newRsync(bc.LocalRoot, bc.Remote)
+	defer rsync.Cleanup()
+	err = rsync.Upload(bc.Upload.Includes, bc.Upload.Excludes)
+	if err != nil {
+		return err
+	}
+	// TODO: do not handle exclude at the moment
+	return rsync.SyncUpload(bc.Sync.Includes)
 }
 
 func example(c *cli.Context) error {

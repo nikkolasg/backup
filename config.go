@@ -14,6 +14,8 @@ type BackupConfig struct {
 	LocalRoot  string
 	Upload     Config
 	Download   Config
+	// makes the endpoint the exact copy as the source
+	Sync Config
 }
 
 // Config specific for an action
@@ -34,15 +36,17 @@ func Load(path string) (*BackupConfig, error) {
 // DumpSampleConfig writes a sample config to the given path
 func DumpSampleConfig(path string) {
 	conf := &BackupConfig{
-		Remote:     "foo@bar.com",
-		RemoteRoot: "/data/backup/",
-		LocalRoot:  "/home/zoo/",
+		Remote:    "foo@bar.com:/data/backup/",
+		LocalRoot: "/home/zoo/",
 		Upload: Config{
 			Includes: []string{"prog/", "documents/", "movies/", "music/"},
 			Excludes: []string{"prog/go/"},
 		},
 		Download: Config{
 			Includes: []string{"documents/", "music/"},
+		},
+		Sync: Config{
+			Includes: []string{".config/awesome/", ".config/termite/"},
 		},
 	}
 	f, err := os.Create(path)

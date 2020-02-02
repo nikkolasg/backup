@@ -1,0 +1,13 @@
+Remote = "foo@bar.com:/data/backup/"
+RemoteRoot = ""
+LocalRoot = "/home/zoo/"
+
+[Upload]
+  Includes = ["prog/", "documents/", "movies/", "music/"]
+  Excludes = ["prog/go/"]
+
+[Download]
+  Includes = ["documents/", "music/"]
+
+[Sync]
+  Includes = [".config/awesome/", ".config/termite/"]
