@@ -42,7 +42,8 @@ func TestBackup(t *testing.T) {
 	require.NoError(t, app.Run(args))
 
 	fname1 := "test.md"
-	createTestFile(filepath.Join(source, fname1))
+	source1 := filepath.Join(source, fname1)
+	createTestFile(source1)
 	args = toArgs("upload", "add", "--config", source, fname1)
 	require.NoError(t, app.Run(args))
 
@@ -55,15 +56,9 @@ func TestBackup(t *testing.T) {
 
 	loadAndCheck(func(bc *BackupConfig) bool { return bc.Upload.Contains(fname1) })
 
-	fname2 := "test2.md"
-	createTestFile(filepath.Join(source, fname2))
-	args = toArgs("upload", "add", "--config", source, "--sync", fname2)
+	args = toArgs("download", "add", "--config", source, fname1)
 	require.NoError(t, app.Run(args))
-	loadAndCheck(func(bc *BackupConfig) bool { return bc.Sync.Contains(fname2) })
-
-	args = toArgs("download", "add", "--config", source, fname2)
-	require.NoError(t, app.Run(args))
-	loadAndCheck(func(bc *BackupConfig) bool { return bc.Download.Contains(fname2) })
+	loadAndCheck(func(bc *BackupConfig) bool { return bc.Download.Contains(fname1) })
 
 	args = toArgs("download", "add", "--config", source, "bloup")
 	require.Error(t, app.Run(args))
@@ -71,15 +66,14 @@ func TestBackup(t *testing.T) {
 	// test to upload!
 	args = toArgs("upload", "--config", source)
 	require.NoError(t, app.Run(args))
-	full1 := filepath.Join(dest, fname1)
-	full2 := filepath.Join(dest, fname2)
-	require.True(t, fileExists(full1))
-	require.True(t, fileExists(full2))
+	remote1 := filepath.Join(dest, fname1)
+	require.True(t, fileExists(remote1))
+
 	// test to download
-	deleteFile(full2)
+	deleteFile(source1)
 	args = toArgs("download", "--config", source)
 	require.NoError(t, app.Run(args))
-	require.True(t, fileExists(full2))
+	require.True(t, fileExists(source1))
 
 }
 

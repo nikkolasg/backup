@@ -144,14 +144,7 @@ func upload(c *cli.Context) error {
 	rsync := newRsync(bc.LocalRoot, bc.Remote)
 	defer rsync.Cleanup()
 	err = rsync.Upload(bc.Upload)
-	if err != nil {
-		return err
-	}
-	if c.IsSet(noSyncFlag.Name) {
-		return nil
-	}
-	// TODO: do not handle exclude at the moment
-	return rsync.SyncUpload(bc.Sync)
+	return err
 }
 
 func uploadAdd(c *cli.Context) error {
@@ -162,11 +155,7 @@ func uploadAdd(c *cli.Context) error {
 	for i := 0; i < c.NArg(); i++ {
 		var err error
 		path := c.Args().Get(i)
-		if c.Bool(syncFlag.Name) {
-			err = bc.Add(Sync, path)
-		} else {
-			err = bc.Add(Upload, path)
-		}
+		err = bc.Add(Upload, path)
 		if err != nil {
 			return fmt.Errorf("upload add: err adding %s: %s", path, err)
 		}

@@ -35,9 +35,8 @@ func (r *rsync) Download(download Config) error {
 		return err
 	}
 	cmd := r.baseCmd(include, exclude)
-	cmd = r.toUpload(cmd)
+	cmd = r.toDownload(cmd)
 	return run(cmd)
-
 }
 
 func (r *rsync) Cleanup() {
