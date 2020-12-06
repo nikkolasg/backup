@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/BurntSushi/toml"
 )
@@ -18,6 +19,12 @@ type BackupConfig struct {
 	// makes the endpoint the exact copy as the source
 	Sync Config
 }
+
+const (
+	Upload int = iota
+	Download
+	Sync
+)
 
 // WriteTo writes the config to the given writer
 func (b *BackupConfig) WriteTo(w io.Writer) error {
@@ -36,13 +43,29 @@ type Config struct {
 	Excludes []string
 }
 
-// Add path to the config - path can be a file or a folder
-func (c *Config) Add(path string) error {
-	if !fileExists(path) {
+// Add the given path to the corresponding type. Checks if file exists, when
+// prefixed with the local root
+func (b *BackupConfig) Add(t int, path string) error {
+	if !fileExists(filepath.Join(b.LocalRoot, path)) {
 		return fmt.Errorf("config: inexistant %s", path)
 	}
-	c.Includes = append(c.Includes, path)
+	switch t {
+	case Sync:
+		b.Sync.Add(path)
+	case Upload:
+		b.Upload.Add(path)
+	case Download:
+		if !b.Upload.Contains(path) && !b.Sync.Contains(path) {
+			return fmt.Errorf("adding path not existent in upload or sync list %s", path)
+		}
+		b.Download.Add(path)
+	}
 	return nil
+}
+
+// Add path to the config - path can be a file or a folder
+func (c *Config) Add(path string) {
+	c.Includes = append(c.Includes, path)
 }
 
 func (c *Config) Contains(path string) bool {

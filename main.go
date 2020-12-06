@@ -36,7 +36,7 @@ var noSyncFlag = &cli.BoolFlag{
 
 var syncFlag = &cli.BoolFlag{
 	Name:  "sync",
-	Usage: "Mark the upload folder to sync",
+	Usage: "Mark the upload folder to sync - it only makes sense for folders",
 }
 
 var fromFlag = &cli.StringFlag{
@@ -89,7 +89,7 @@ var app = &cli.App{
 			Flags: []cli.Flag{confFlag, fakeFlag, verboseFlag},
 			Action: func(c *cli.Context) error {
 				banner(c)
-				return nil
+				return downloadCmd(c)
 			},
 			Subcommands: []cli.Command{
 				{
@@ -163,9 +163,9 @@ func uploadAdd(c *cli.Context) error {
 		var err error
 		path := c.Args().Get(i)
 		if c.Bool(syncFlag.Name) {
-			err = bc.Sync.Add(path)
+			err = bc.Add(Sync, path)
 		} else {
-			err = bc.Upload.Add(path)
+			err = bc.Add(Upload, path)
 		}
 		if err != nil {
 			return fmt.Errorf("upload add: err adding %s: %s", path, err)
@@ -182,15 +182,22 @@ func downloadAdd(c *cli.Context) error {
 		return err
 	}
 	path := c.Args().Get(0)
-	if !bc.Upload.Contains(path) && !bc.Sync.Contains(path) {
-		return fmt.Errorf("adding path not existent in upload or sync list %s", path)
-	}
-	if err := bc.Download.Add(c.Args().Get(0)); err != nil {
-		return fmt.Errorf("download adding path err: %s", err)
+	if err := bc.Add(Download, path); err != nil {
+		return fmt.Errorf("error adding download: %s", err)
 	}
 	folder := getConfFolder(c)
 	fname := getConfigFile(folder)
 	return bc.WriteToFile(fname)
+}
+
+func downloadCmd(c *cli.Context) error {
+	bc, err := getConf(c)
+	if err != nil {
+		return err
+	}
+	rsync := newRsync(bc.LocalRoot, bc.Remote)
+	defer rsync.Cleanup()
+	return rsync.Download(bc.Download)
 }
 
 func initConfig(c *cli.Context) error {
