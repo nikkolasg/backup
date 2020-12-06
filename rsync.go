@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,68 +21,95 @@ type rsync struct {
 }
 
 func newRsync(lroot, rhost string) *rsync {
-	tmp, err := ioutil.TempDir("", "backup")
-	if err != nil {
-		panic(err)
-	}
+
 	return &rsync{
 		rhost: rhost,
 		lroot: lroot,
-		tmp:   tmp,
+		tmp:   tmpFolder(),
 	}
 }
 
-func (r *rsync) Download(paths, excludes []string) error {
-	panic("not implemented yet")
-	/*cmd := r.baseCmd(paths, excludes)*/
-	//// from remote host to local
-	//cmd = append(cmd, r.remoteEndpoint())
-	//cmd = append(cmd, r.lroot)
-	/*return run(cmd)*/
+func (r *rsync) Download(download Config) error {
+	include, exclude, err := r.getFilePath(download)
+	if err != nil {
+		return err
+	}
+	cmd := r.baseCmd(include, exclude)
+	cmd = r.toUpload(cmd)
+	return run(cmd)
+
 }
 
 func (r *rsync) Cleanup() {
 	os.RemoveAll(r.tmp)
 }
 
-func (r *rsync) Upload(paths, excludes []string) error {
-	inclusion := filepath.Join(r.tmp, "include.backup")
-	if err := writeTmp(inclusion, paths); err != nil {
-		return err
-	}
-
-	exclusion := filepath.Join(r.tmp, "exclude.backup")
-	if err := writeTmp(exclusion, excludes); err != nil {
-		return err
-	}
-
-	cmd := r.baseCmd(inclusion, exclusion)
-	// from local to remote
-	cmd = append(cmd, r.lroot)
-	cmd = append(cmd, r.rhost)
-	return run(cmd)
-}
-
-func (r *rsync) SyncUpload(paths []string) error {
-	if len(paths) == 0 {
-		return nil
-	}
-	cmd, err := r.syncCmd(paths)
+func (r *rsync) Upload(upload Config) error {
+	include, exclude, err := r.getFilePath(upload)
 	if err != nil {
 		return err
 	}
-
-	cmd = append(cmd, r.lroot)
-	cmd = append(cmd, r.rhost)
+	cmd := r.baseCmd(include, exclude)
+	cmd = r.toUpload(cmd)
 	return run(cmd)
 }
 
-func (r *rsync) syncCmd(paths []string) ([]string, error) {
-	inclusion := filepath.Join(r.tmp, "include.backup")
-	if err := writeTmp(inclusion, paths); err != nil {
+func (r *rsync) getFilePath(c Config) (include string, exclude string, err error) {
+	if len(c.Includes) == 0 {
+		return "", "", fmt.Errorf("Invalid config: no include or includefile")
+	}
+
+	var includePath, excludePath string
+	includePath = filepath.Join(r.tmp, "include.backup")
+	if err := writeTmp(includePath, c.Includes); err != nil {
+		return "", "", err
+	}
+	if len(c.Excludes) > 0 {
+		excludePath = filepath.Join(r.tmp, "exclude.backup")
+		if err := writeTmp(excludePath, c.Excludes); err != nil {
+			return "", "", err
+		}
+	}
+	return includePath, excludePath, nil
+}
+
+func (r *rsync) SyncUpload(sync Config) error {
+	cmd, err := r.syncCmd(sync)
+	if err != nil {
+		return err
+	}
+	cmd = r.toUpload(cmd)
+	return run(cmd)
+}
+
+func (r *rsync) SyncDownload(sync Config) error {
+	cmd, err := r.syncCmd(sync)
+	if err != nil {
+		return err
+	}
+	cmd = r.toDownload(cmd)
+	return run(cmd)
+
+}
+
+func (r *rsync) toUpload(cmd []string) []string {
+	cmd = append(cmd, r.lroot)
+	cmd = append(cmd, r.rhost)
+	return cmd
+}
+
+func (r *rsync) toDownload(cmd []string) []string {
+	cmd = append(cmd, r.rhost)
+	cmd = append(cmd, r.lroot)
+	return cmd
+}
+
+func (r *rsync) syncCmd(sync Config) ([]string, error) {
+	include, _, err := r.getFilePath(sync)
+	if err != nil {
 		return nil, err
 	}
-	cmd := r.baseCmd(inclusion, "")
+	cmd := r.baseCmd(include, "")
 	cmd = append(cmd, "--delete")
 	return cmd, nil
 }

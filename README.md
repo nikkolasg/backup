@@ -14,8 +14,8 @@ go get -u github.com/nikkolasg/backup
 
 ## Configuration
 
-Dump an example configuration in the current folder:
+Initial configuration:
 ```
-backup example
+backup init
 ```
 And fill in the rest.

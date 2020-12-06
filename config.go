@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 
 	"github.com/BurntSushi/toml"
@@ -9,19 +11,47 @@ import (
 
 // BackupConfig contains all info
 type BackupConfig struct {
-	Remote     string
-	RemoteRoot string
-	LocalRoot  string
-	Upload     Config
-	Download   Config
+	Remote    string
+	LocalRoot string
+	Upload    Config
+	Download  Config
 	// makes the endpoint the exact copy as the source
 	Sync Config
+}
+
+// WriteTo writes the config to the given writer
+func (b *BackupConfig) WriteTo(w io.Writer) error {
+	return toml.NewEncoder(w).Encode(b)
+}
+
+func (b BackupConfig) WriteToFile(fname string) error {
+	return getWriter(fname, func(w io.Writer) error {
+		return b.WriteTo(w)
+	})
 }
 
 // Config specific for an action
 type Config struct {
 	Includes []string
 	Excludes []string
+}
+
+// Add path to the config - path can be a file or a folder
+func (c *Config) Add(path string) error {
+	if !fileExists(path) {
+		return fmt.Errorf("config: inexistant %s", path)
+	}
+	c.Includes = append(c.Includes, path)
+	return nil
+}
+
+func (c *Config) Contains(path string) bool {
+	for _, ipath := range c.Includes {
+		if ipath == path {
+			return true
+		}
+	}
+	return false
 }
 
 // Load  returns a BackupConfig from a file
@@ -33,28 +63,48 @@ func Load(path string) (*BackupConfig, error) {
 	return &bc, nil
 }
 
+var dump = `
+# Server where to backup/restore - one can write any information understandable 
+# by rsync
+#Remote = "foo@bar.com:/data/backup/"
+# Root on local filesystem from where to base the rest of the paths
+#LocalRoot = "/home/zoo/"
+
+# Configuration items for the uploading part, i.e. the files or folder
+# that you want to save on the remote server. Uploading de not delete
+# any file on the remote server, it only overwrite existing file if 
+# changed and copy the new files if any.
+#[Upload]
+  # List of folder/files to backup
+  # Includes = ["prog/", "documents/", "movies/", "music/"]
+
+  # List of folder/files to exclude from backup
+  # It can be useful if there are some subfolder you wish to exclude
+  # Excludes = ["prog/go/"]
+
+# Configuration items for the downloading part, i.e. the files of folder
+# that you want to restore from the remote server
+# It contains the same fields than the Upload config (Include, IncludeFile...)
+# Downloading do not delete any file locally, it only updates existing files
+# if changed and copy new files if any.
+# [Download]
+  # Includes = ["documents/", "music/"]
+
+
+# Configuration items for the files and folder you wish to sync
+# Sync means it will recreate the exact content on the given paths
+# locally or remotely depending on the action (upload or download)
+# It can be useful for configuration folders for example that have
+# new files overtime, and you don't want to keep the old files around,
+# just want the latest version. Think of it as a git clone operation that 
+# only takes the latest state.
+# [Sync]
+#   Includes = [".config/awesome/", ".config/termite/"]
+`
+
+var ConfigPerm os.FileMode = 0700
+
 // DumpSampleConfig writes a sample config to the given path
-func DumpSampleConfig(path string) {
-	conf := &BackupConfig{
-		Remote:    "foo@bar.com:/data/backup/",
-		LocalRoot: "/home/zoo/",
-		Upload: Config{
-			Includes: []string{"prog/", "documents/", "movies/", "music/"},
-			Excludes: []string{"prog/go/"},
-		},
-		Download: Config{
-			Includes: []string{"documents/", "music/"},
-		},
-		Sync: Config{
-			Includes: []string{".config/awesome/", ".config/termite/"},
-		},
-	}
-	f, err := os.Create(path)
-	if err != nil {
-		fmt.Printf("error creating dump config: %s", err)
-		return
-	}
-	if err := toml.NewEncoder(f).Encode(&conf); err != nil {
-		fmt.Printf("error encoding file: %s", err)
-	}
+func DumpSampleConfig(path string) error {
+	return ioutil.WriteFile(path, []byte(dump), ConfigPerm)
 }
