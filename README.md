@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/nikkolasg/backup.svg?branch=master)](https://travis-ci.com/nikkolasg/backup)
+[![codecov](https://codecov.io/gh/nikkolasg/backup/branch/master/graph/badge.svg?token=L0JCS6XYXH)](https://codecov.io/gh/nikkolasg/backup)
+
 # backup
 
 backup is a simple and configurable wrapper of rsync to easily perform backups
