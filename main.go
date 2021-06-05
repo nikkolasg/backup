@@ -41,7 +41,7 @@ var syncFlag = &cli.BoolFlag{
 
 var fromFlag = &cli.StringFlag{
 	Name:  "from",
-	Usage: "Fetch configuration from `USER@HOST`",
+	Usage: "Fetch configuration from `USER@HOST:PATH`",
 }
 
 var cleanFlag = &cli.BoolFlag{
@@ -50,15 +50,13 @@ var cleanFlag = &cli.BoolFlag{
 }
 
 var remoteFlag = &cli.StringFlag{
-	Name:     "remote",
-	Usage:    "remote endpoint - rsync must be able to parse it",
-	Required: true,
+	Name:  "remote",
+	Usage: "remote endpoint - rsync must be able to parse it",
 }
 
 var localFlag = &cli.StringFlag{
-	Name:     "local",
-	Usage:    "local base folder - rsync ",
-	Required: true,
+	Name:  "local",
+	Usage: "local base folder - rsync ",
 }
 
 var app = &cli.App{
@@ -106,7 +104,7 @@ var app = &cli.App{
 		{
 			Name:  "init",
 			Usage: "Init a backup configuration or fetch from server",
-			Flags: []cli.Flag{confFlag, cleanFlag, localFlag, remoteFlag},
+			Flags: []cli.Flag{fromFlag, confFlag, cleanFlag, localFlag, remoteFlag},
 			Action: func(c *cli.Context) error {
 				banner(c)
 				return initConfig(c)
@@ -191,7 +189,7 @@ func downloadCmd(c *cli.Context) error {
 
 func initConfig(c *cli.Context) error {
 	if c.IsSet(fromFlag.Name) {
-		//return fetchConfig(c.String(fromFlag.Name))
+		return fetchConfig(c)
 	}
 
 	folder := getConfFolder(c)
@@ -217,10 +215,30 @@ func initConfig(c *cli.Context) error {
 	return nil
 }
 
-func getConf(c *cli.Context) (*BackupConfig, error) {
+// fetchConfig reads the remote endpoint where the config is stored, fetches it
+// via rsync and stores it locally. It is straightforward to setup a new system
+// by fetching the remote config.
+func fetchConfig(c *cli.Context) error {
+	remotePath := c.String(fromFlag.Name)
+	config, err := LoadRemote(remotePath)
+	if err != nil {
+		return err
+	}
+	localPath := getConfPath(c)
+	if err := config.WriteToFile(localPath); err != nil {
+		return fmt.Errorf("failed to write config locally: %s", err)
+	}
+	fmt.Println("Config successfully fetched from remote and init locally.")
+	return nil
+}
+
+func getConfPath(c *cli.Context) string {
 	folder := getConfFolder(c)
-	path := getConfigFile(folder)
-	return Load(path)
+	return getConfigFile(folder)
+}
+
+func getConf(c *cli.Context) (*BackupConfig, error) {
+	return Load(getConfPath(c))
 }
 
 func getConfigFile(folder string) string {

@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestInit run the init command and test the fetching from remote place
 func TestInit(t *testing.T) {
 	tmp := tmpFolder()
 	defer os.RemoveAll(tmp)
@@ -27,10 +28,20 @@ func TestInit(t *testing.T) {
 	args = toArgs("init", "--config", tmp, "--clean", "--remote", toSearch, "--local", tmp)
 	require.NoError(t, app.Run(args))
 
-	bc, err := Load(getConfigFile(tmp))
+	localPath := getConfigFile(tmp)
+	bc, err := Load(localPath)
 	require.NoError(t, err)
 	require.Equal(t, bc.LocalRoot, tmp)
 	require.Equal(t, bc.Remote, toSearch)
+
+	tmp2 := tmpFolder()
+	defer os.RemoveAll(tmp2)
+	args = toArgs("init", "--config", tmp2, "--from", localPath)
+	require.NoError(t, app.Run(args))
+	localPath2 := getConfigFile(tmp2)
+	bc2, err := Load(localPath2)
+	require.NoError(t, err)
+	require.Equal(t, bc, bc2)
 }
 
 func TestBackup(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -21,12 +22,24 @@ type rsync struct {
 }
 
 func newRsync(lroot, rhost string) *rsync {
-
 	return &rsync{
 		rhost: rhost,
 		lroot: lroot,
 		tmp:   tmpFolder(),
 	}
+}
+
+// FetchFile takes the remote host name USER@HOST:PATH on the remote server. It
+// downloads the file using rsync and places it into a tmp folder. The full path
+// on localhost is returned or an error.
+// The remote can also be given as PATH on the local filesystem.
+func FetchFile(remote string) (string, error) {
+	tmp := tmpFolder()
+	localPath := path.Join(tmp, "fetched.config")
+	cmd := []string{"rsync", "-ravzz", "--links", "--progress"}
+	cmd = append(cmd, remote)
+	cmd = append(cmd, localPath)
+	return localPath, run(cmd)
 }
 
 func (r *rsync) Download(download Config) error {

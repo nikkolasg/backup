@@ -80,4 +80,19 @@ func Load(path string) (*BackupConfig, error) {
 	return &bc, nil
 }
 
+// LoadRemote takes a remote ssh path USER@HOST:PATH to the config stored on a
+// server and fetches it locally. If the remote is not on this form, it assumes
+// the path is on the same filesystem locally, similar to rsync.
+func LoadRemote(remote string) (*BackupConfig, error) {
+	local, err := FetchFile(remote)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching remote config: %s", err)
+	}
+	conf, err := Load(local)
+	if err != nil {
+		return nil, fmt.Errorf("error reading fetched config: %s", err)
+	}
+	return conf, nil
+}
+
 var ConfigPerm os.FileMode = 0700

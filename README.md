@@ -17,6 +17,8 @@ go get -u github.com/nikkolasg/backup
 
 ## Configuration
 
+### Fresh Configuration
+
 backup requires to know at least two informations:
 * Local root: the absolute path from which where to backup files and folders. It
   can be `/home/ubuntu` for example, or `/` if you wish to backup from your root
@@ -29,7 +31,25 @@ backup requires to know at least two informations:
 backup init --remote <remote> --local <local>
 ```
 
-If you want to use a custom configuration folder
+### Remote Configuration
+
+backup can fetch the configuration already stored on a remote server (or
+different path locally, whatever rsync accepts) and sets it up internally.
+To do this, simply run the following:
+```
+backup init --from USER@HOST:PATH
+```
+Note the argument to `--from` can be anytihng rsync accepts.
+
+
+### Config Folder
+
+If you want to use a custom configuration folder, specify:
+```
+backup init --config <custom folder>
+```
+Note this flag must be specifed for all the subsequent commands.
+
 
 #### Adding folders to upload
 
@@ -55,3 +75,4 @@ doesn't allow to restore a file not tracked in upload yet.
 TODO: make list argument
 
 TODO: git restore
+
